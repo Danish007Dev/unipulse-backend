@@ -1,0 +1,34 @@
+from rest_framework_simplejwt.tokens import RefreshToken
+
+# def generate_custom_tokens(user, user_type):
+#     refresh = RefreshToken()
+#     refresh['email'] = user.email
+#     refresh['user_type'] = user_type
+
+#     access = refresh.access_token
+#     access['email'] = user.email
+#     access['user_type'] = user_type
+
+#     return {
+#         "refresh": str(refresh),
+#         "access": str(access)
+#     }
+
+def generate_custom_tokens(user, user_type):
+    # Create refresh token bound to user ID (required for proper token tracking)
+    refresh = RefreshToken.for_user(user)
+    
+    # Add custom claims
+    refresh['email'] = user.email
+    refresh['user_type'] = user_type
+
+    access = refresh.access_token
+    access['email'] = user.email
+    access['user_type'] = user_type
+
+    return {
+        "refresh": str(refresh),
+        "access": str(access)
+    }
+# ✅ Now, RefreshToken.for_user(user) ensures the token is tied to Django’s
+#  User instance (even if it’s not directly used in your app, this is still a good practice for revoking/blacklisting support).
