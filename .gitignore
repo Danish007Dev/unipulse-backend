@@ -13,9 +13,14 @@ media/
 venv/
 ENV/
 env/
+.env.production
 
 # VS Code
 .vscode/
 
 # MacOS
 .DS_Store
+
+# Ignore DB backups
+*.dump
+*.sql

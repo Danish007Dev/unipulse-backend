@@ -9,23 +9,35 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+from datetime import timedelta
 from pathlib import Path
+import os
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Initialize environment variables
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+
+# Determine environment
+ENVIRONMENT = os.getenv("DJANGO_ENV", "development")
+ENV_FILE = ".env.production" if ENVIRONMENT == "production" else ".env"
+environ.Env.read_env(os.path.join(BASE_DIR, ENV_FILE))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-c(cjm(%^_=pof-zrftr33x5#8o=7a&xs#k%-u$f8ufc79e3)%z'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG')
 
-ALLOWED_HOSTS = ['*'] #'192.168.159.34','192.168.201.34','localhost','127.0.0.1','10.0.2.2'
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1'])
+
 
 
 # Application definition
@@ -82,15 +94,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    #"http://127.0.0.1:8000",
-    "http://localhost:8000",  # If running Flutter web on local
-    "http://10.0.2.2:8000",   # If using Android Emulator
-    "http://192.168.159.34:8000",
-    "http://192.168.201.34:8000",  # If using a real mobile device (Replace with your actual IP)
-]
+# CORS Configuration
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = not DEBUG
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 
 
 # Allow all headers and methods
@@ -136,11 +143,11 @@ WSGI_APPLICATION = 'uniBackend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'unipulseDB',
-        'USER': 'danishdev',
-        'PASSWORD': 'hesoyam18',
-        'HOST': 'localhost',  # or wherever your database is hosted
-        'PORT': '5432',  # default port for PostgreSQL
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST', default='localhost'),
+        'PORT': env('DB_PORT', default='5432'),
     }
 }
 
@@ -190,10 +197,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Email Backend
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-import environ
 
-env = environ.Env()
-environ.Env.read_env()
 
 # SMTP Configuration (Using Gmail)
 EMAIL_HOST = 'smtp.gmail.com'        # SMTP server
@@ -214,10 +218,13 @@ SESSION_COOKIE_AGE = 86400  # Session expires in 24 hours
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keep session active until it expires
 SESSION_SAVE_EVERY_REQUEST = True  # Refresh session expiration on each request
 
+# Production Security Settings
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_SSL_REDIRECT = not DEBUG
 
 
-
-import os   
+  
 # If you ever deploy to production, you must configure your web server (like Nginx or Apache) 
 # to serve files from MEDIA_ROOT. Django won’t serve them in production.
 
