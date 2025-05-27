@@ -66,12 +66,13 @@ def main():
     update_version_file(new_tag)    
 
     subprocess.run(["git", "add", "CHANGELOG.md"])
+    subprocess.run(["git", "add", "version.txt"])
     subprocess.run(["git", "commit", "-m", f"chore: release {new_tag}"])
     subprocess.run(["git", "tag", new_tag])
     subprocess.run(["git", "push"])
     subprocess.run(["git", "push", "--tags"])
 
-    print(f"✅ Released {new_tag}")
+    print(f"✅ Released {new_tag}") 
 
 if __name__ == "__main__":
     main()
