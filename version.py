@@ -28,6 +28,10 @@ def generate_changelog(since_tag):
     result = subprocess.run(log_cmd, capture_output=True, text=True)
     return result.stdout.strip()
 
+def update_version_file(version):
+    with open("version.txt", "w") as f:
+        f.write(version)
+
 def main():
     part = "patch"
     if len(sys.argv) == 2 and sys.argv[1] in ["major", "minor", "patch"]:
@@ -47,6 +51,8 @@ def main():
     with open("CHANGELOG.md", "a") as f:
         f.write(entry)
 
+    update_version_file(new_tag)    
+
     # subprocess.run(["git", "add", "CHANGELOG.md"])
     # subprocess.run(["git", "commit", "-m", f"chore: release {new_tag}"])
     # subprocess.run(["git", "tag", new_tag])
@@ -62,7 +68,7 @@ if __name__ == "__main__":
 
 # ## 🚀 How to Use It
 
-# # Bump patch version (default)
+# # Bump patch version (default- patch)
 # python version_bump.py
 
 # # Bump minor version
