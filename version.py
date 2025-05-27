@@ -32,7 +32,19 @@ def update_version_file(version):
     with open("version.txt", "w") as f:
         f.write(version)
 
+def get_current_branch():
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True)
+    return result.stdout.strip()        
+
 def main():
+    allowed_branches = ["main"] #to prevent accidental tagging on other branches, add branch to tag
+    current_branch = get_current_branch()
+
+    if not any(current_branch.startswith(prefix) for prefix in allowed_branches):
+        print(f"🚫 Tagging is restricted. Current branch: '{current_branch}'.")
+        print(f"✅ Allowed branches: {allowed_branches}")
+        return
+
     part = "patch"
     if len(sys.argv) == 2 and sys.argv[1] in ["major", "minor", "patch"]:
         part = sys.argv[1]
@@ -53,11 +65,11 @@ def main():
 
     update_version_file(new_tag)    
 
-    # subprocess.run(["git", "add", "CHANGELOG.md"])
-    # subprocess.run(["git", "commit", "-m", f"chore: release {new_tag}"])
-    # subprocess.run(["git", "tag", new_tag])
-    # subprocess.run(["git", "push"])
-    # subprocess.run(["git", "push", "--tags"])
+    subprocess.run(["git", "add", "CHANGELOG.md"])
+    subprocess.run(["git", "commit", "-m", f"chore: release {new_tag}"])
+    subprocess.run(["git", "tag", new_tag])
+    subprocess.run(["git", "push"])
+    subprocess.run(["git", "push", "--tags"])
 
     print(f"✅ Released {new_tag}")
 
