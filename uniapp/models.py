@@ -98,9 +98,10 @@ class Post(models.Model):
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name='posts')
    
     content = models.TextField(blank=True, null=True) # to show actual mesage (content) sent by the faculty on posts
-    document = models.FileField(upload_to='posts/docs/', blank=True, null=True)
-    image = models.ImageField(upload_to='posts/images/', blank=True, null=True)
-   
+    
+    document = models.URLField(blank=True, null=True)
+    image = models.URLField(blank=True, null=True)
+    
     department = models.ForeignKey(Department, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE)

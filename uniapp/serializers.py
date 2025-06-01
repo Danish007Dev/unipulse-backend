@@ -72,38 +72,31 @@ class PostSerializer(serializers.ModelSerializer):
     semester_name = serializers.CharField(source='semester.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     content=serializers.CharField(required=False, allow_blank=True)
-
-    # Read-only URL fields (used during GET)
-    document = serializers.SerializerMethodField(read_only=True)
-    image = serializers.SerializerMethodField(read_only=True)
-     # Upload-only fields (used during POST)
-    document_upload = serializers.FileField(write_only=True, required=False, allow_null=True)
-    image_upload = serializers.ImageField(write_only=True, required=False, allow_null=True)
-
+    # Urls-only fields for uploading to supabase storage (used during POST)
+    document_url = serializers.URLField(write_only=True , required=False, allow_null=True)
+    image_url = serializers.URLField(write_only=True, required=False, allow_null=True)
+    # add urls fields to fetch document and image from supabase storage (used during GET)  
+      # Read-only URLs (return to frontend)
+    document = serializers.CharField(read_only=True)
+    image = serializers.CharField(read_only=True)
+    
     is_saved = serializers.SerializerMethodField()
   
     class Meta:
         model = Post
-        fields = '__all__'
+        fields = '__all__' 
         read_only_fields = ['faculty', 'created_at'] # 👈 Prevent frontend from sending iT
 
-    def get_document(self, obj):
-        request = self.context.get('request')
-        if obj.document and hasattr(obj.document, 'url'):
-            return request.build_absolute_uri(obj.document.url)
-        return None
+    # add methods below,to GET document and image from supabase storage urls
 
-    def get_image(self, obj):
-        request = self.context.get('request')
-        if obj.image and hasattr(obj.image, 'url'):
-            return request.build_absolute_uri(obj.image.url)
-        return None
-    
+
     def create(self, validated_data):
-        # Map upload fields to model fields
-        document = validated_data.pop('document_upload', None)
-        image = validated_data.pop('image_upload', None)
-        
+        print("✅ Clean validated_data before create:", validated_data)
+        # Pop explicitly to avoid duplication error
+        document = validated_data.pop('document_url', None)
+        image = validated_data.pop('image_url', None)
+       
+
         # Create the post instance
         instance = Post.objects.create(
             document=document,
@@ -111,12 +104,6 @@ class PostSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return instance
-    
-    # def create(self, validated_data):
-    #     # Pop upload-only fields and map them to model fields
-    #     validated_data['document'] = validated_data.pop('document_upload', None)
-    #     validated_data['image'] = validated_data.pop('image_upload', None)
-    #     return super().create(validated_data)
     
     def get_is_saved(self, obj):
         saved_ids = self.context.get('saved_ids', set())
