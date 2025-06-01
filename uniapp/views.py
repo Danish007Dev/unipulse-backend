@@ -26,6 +26,24 @@ from .authentication import CustomJWTAuthentication
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import ValidationError, NotFound
 from .utils import get_user_by_type_and_details
+# from supabase import create_client
+# from uniBackend import settings
+
+# SUPABASE_URL = settings.SUPABASE_URL
+# SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
+# supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# def extract_supabase_path(url):
+#     """
+#     Given a full Supabase public URL, extract the relative path in the bucket.
+#     Example: 
+#     https://xyz.supabase.co/storage/v1/object/public/media-unipulse/documents/file.pdf 
+#     -> documents/file.pdf
+#     """
+#     parts = url.split('/media-unipulse/')
+#     if len(parts) == 2:
+#         return parts[1]
+#     return None
 
 
 # class RequestOTPView(APIView):
@@ -372,22 +390,46 @@ class FacultyPostCreateView(APIView):
 
         serializer = PostSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            data = serializer.save(faculty=faculty, department=faculty.department)
-             # Save with faculty from request
-            # post = serializer.save(faculty=request.user.faculty)
+            # data = serializer.save(faculty=faculty, department=faculty.department)
+            #  # Save with faculty from request
+            # # post = serializer.save(faculty=request.user.faculty)
             
-            # Handle document upload
-            if 'document_upload' in request.FILES:
-                data.document = request.FILES['document_upload']
+            # # Handle document upload [test if django file upload works with commenting this section and then delete]
+            # if 'document_upload' in request.FILES:
+            #     data.document = request.FILES['document_upload']
             
-            # Handle image upload
-            if 'image_upload' in request.FILES:
-                data.image = request.FILES['image_upload']
+            # # Handle image upload
+            # if 'image_upload' in request.FILES:
+            #     data.image = request.FILES['image_upload']
             
-            # Save the post with files
-            # data.save()
-            return Response(serializer.data, status=201)
+            # # Save the post with files
+            # # data.save()
+            # return Response(serializer.data, status=201)
+            post = serializer.save(faculty=faculty, department=faculty.department)
+            return Response(PostSerializer(post, context={'request': request}).data, status=201)
         return Response(serializer.errors, status=400)
+
+# class FacultyPostDeleteView(APIView):
+#     authentication_classes = [CustomJWTAuthentication]
+#     permission_classes = [IsAuthenticated, IsFaculty]
+
+#     def delete(self, request, post_id):
+#         faculty = request.user.profile
+#         try:
+#             post = Post.objects.get(id=post_id, faculty=faculty)
+#              # Extract Supabase paths and delete files
+#             doc_path = extract_supabase_path(post.document) if post.document else None
+#             img_path = extract_supabase_path(post.image) if post.image else None
+
+#             if doc_path:
+#                 supabase.storage.from_("media-unipulse").remove([doc_path])
+#             if img_path:
+#                 supabase.storage.from_("media-unipulse").remove([img_path])
+                
+#             post.delete()
+#             return Response({"detail": "Post deleted."}, status=200)
+#         except Post.DoesNotExist:
+#             return Response({"detail": "Post not found or unauthorized."}, status=404)
 
 class FacultyPostDeleteView(APIView):
     authentication_classes = [CustomJWTAuthentication]
@@ -397,10 +439,11 @@ class FacultyPostDeleteView(APIView):
         faculty = request.user.profile
         try:
             post = Post.objects.get(id=post_id, faculty=faculty)
-            post.delete()
+            post.delete()  # ✅ signal handles file cleanup
             return Response({"detail": "Post deleted."}, status=200)
         except Post.DoesNotExist:
             return Response({"detail": "Post not found or unauthorized."}, status=404)
+
 
 
 class FacultyCoursesAPIView(APIView):#for faculty dashboard ,This lets the frontend fetch all courses assigned to the faculty. 
