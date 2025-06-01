@@ -17,8 +17,6 @@ Including another URLconf
 from django.shortcuts import redirect
 from django.contrib import admin
 from django.urls import path , include
-from django.conf import settings
-from django.conf.urls.static import static
 from uniapp.views import VerifyOTPView, RequestOTPView, CustomTokenRefreshView, StudentPostListView, ToggleSavePostView,FacultyPostListView, FacultyPostCreateView, FacultyCoursesAPIView, SemestersByCourseAPIView, FacultyPostDeleteView, DepartmentListView
 
 from rest_framework_simplejwt.views import TokenBlacklistView
@@ -45,7 +43,7 @@ urlpatterns = [
    path('views/course/<int:course_id>/semesters/', SemestersByCourseAPIView.as_view(), name='semesters-by-course'),
    path('views/faculty/posts/<int:post_id>/', FacultyPostDeleteView.as_view(), name='delete-post'),
    path('views/departments/', DepartmentListView.as_view(), name='department-list'), 
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
 
 # This does two things:
 # Saves files under project_root/media/posts/docs/filename.pdf
