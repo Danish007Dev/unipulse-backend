@@ -38,7 +38,8 @@ DEBUG = env.bool('DEBUG')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
-
+SUPABASE_URL = env('SUPABASE_URL')
+SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY')
 
 # Application definition
 
@@ -224,12 +225,8 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
 
 
-  
-# If you ever deploy to production, you must configure your web server (like Nginx or Apache) 
-# to serve files from MEDIA_ROOT. Django won’t serve them in production.
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
