@@ -18,33 +18,39 @@ from django.shortcuts import redirect
 from django.contrib import admin
 from django.urls import path , include
 from uniapp.views import VerifyOTPView, RequestOTPView, CustomTokenRefreshView, StudentPostListView, ToggleSavePostView,FacultyPostListView, FacultyPostCreateView, FacultyCoursesAPIView, SemestersByCourseAPIView, FacultyPostDeleteView, DepartmentListView
-
 from rest_framework_simplejwt.views import TokenBlacklistView
 
 
 def home_redirect(request):
-    return redirect('admin/')   # Change this to your preferred route
+    return redirect('/admin/')
 
 urlpatterns = [
-   path("views/token/refresh/", CustomTokenRefreshView.as_view(), name="token_refresh"),
-   path("token/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
-   path("admin/", admin.site.urls),
-   path('admin/', include('nested_admin.urls')),
-   path("views/request-otp/", RequestOTPView.as_view(), name="request-otp"),
-   path("views/verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),
-   
-   path('views/student/posts/', StudentPostListView.as_view(), name='student-posts'),
-   path('views/student/posts/save/', ToggleSavePostView.as_view(), name='save-post'),
-   # path('views/student/save-post/', SavePostView.as_view(), name='save-post'),
-#    path('views/student/saved-posts/', SavedPostsListView.as_view(), name='saved-posts'),
-   path('views/faculty/posts/', FacultyPostListView.as_view(), name='faculty-post-list'),
-   path('views/faculty/posts/create/', FacultyPostCreateView.as_view(), name='faculty-post-create'),
-   path('views/faculty/courses/', FacultyCoursesAPIView.as_view(), name='faculty-courses'),
-   path('views/course/<int:course_id>/semesters/', SemestersByCourseAPIView.as_view(), name='semesters-by-course'),
-   path('views/faculty/posts/<int:post_id>/', FacultyPostDeleteView.as_view(), name='delete-post'),
-   path('views/departments/', DepartmentListView.as_view(), name='department-list'), 
-] 
+    # The path should be 'feedup/', not 'api/feedup/'
+    path('feedup/', include('feedup.urls')), 
 
-# This does two things:
-# Saves files under project_root/media/posts/docs/filename.pdf
-# Serves them at http://localhost:8000/media/posts/docs/filename.pdf in development
+    # Auth
+    path("views/token/refresh/", CustomTokenRefreshView.as_view(), name="token_refresh"),
+    path("token/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
+
+    # Admin
+    path("admin/", admin.site.urls),
+    path('admin/', include('nested_admin.urls')),
+
+    # OTP
+    path("views/request-otp/", RequestOTPView.as_view(), name="request-otp"),
+    path("views/verify-otp/", VerifyOTPView.as_view(), name="verify-otp"),
+
+    # Student
+    path('views/student/posts/', StudentPostListView.as_view(), name='student-posts'),
+    path('views/student/posts/save/', ToggleSavePostView.as_view(), name='save-post'),
+
+    # Faculty
+    path('views/faculty/posts/', FacultyPostListView.as_view(), name='faculty-post-list'),
+    path('views/faculty/posts/create/', FacultyPostCreateView.as_view(), name='faculty-post-create'),
+    path('views/faculty/courses/', FacultyCoursesAPIView.as_view(), name='faculty-courses'),
+    path('views/course/<int:course_id>/semesters/', SemestersByCourseAPIView.as_view(), name='semesters-by-course'),
+    path('views/faculty/posts/<int:post_id>/', FacultyPostDeleteView.as_view(), name='delete-post'),
+
+    # Department
+    path('views/departments/', DepartmentListView.as_view(), name='department-list'),
+]
