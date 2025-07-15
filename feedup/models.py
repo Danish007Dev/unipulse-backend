@@ -4,6 +4,8 @@ from django.contrib.postgres.fields import ArrayField
 from datetime import timedelta 
 import secrets
 import string
+import os
+from django.conf import settings
 
 class FeedUpUser(models.Model):
     email = models.EmailField(unique=True)
@@ -111,5 +113,23 @@ class OTPVerification(models.Model):
     def __str__(self):
         return f"OTP for {self.email}"
 
+class AiResponseBookmark(models.Model):
+    """
+    Represents a bookmarked AI question and answer pair related to an article.
+    """
+    user = models.ForeignKey(FeedUpUser, on_delete=models.CASCADE, related_name='ai_bookmarks')
+    original_article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='ai_bookmarks')
+    question = models.TextField()
+    answer = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['-created_at']
+        # Ensures a user cannot bookmark the same question for the same article more than once.
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'original_article_id', 'question'], name='unique_ai_bookmark_per_user')
+        ]
+
+    def __str__(self):
+        return f"Bookmark by {self.user.email} on article '{self.original_article.title}'"
 

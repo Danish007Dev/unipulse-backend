@@ -1,4 +1,4 @@
-from .models import ArticleStaging, FeedUpUser, Bookmark, Article # ✅ Use ArticleStaging
+from .models import ArticleStaging, FeedUpUser, Bookmark, Article , AiResponseBookmark
 from rest_framework import serializers
 
 class YourFeedSerializer(serializers.ModelSerializer):
@@ -67,3 +67,16 @@ class FeedUpUserRegistrationSerializer(serializers.ModelSerializer):
 class FeedUpUserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+
+
+class AiResponseBookmarkSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the AiResponseBookmark model.
+    Includes a nested serializer for the original article to provide context.
+    """
+    # Use a lean version of the ArticleSerializer to avoid sending too much data
+    original_article = ArticleSerializer(read_only=True)
+
+    class Meta:
+        model = AiResponseBookmark
+        fields = ['id', 'question', 'answer', 'created_at', 'original_article']    

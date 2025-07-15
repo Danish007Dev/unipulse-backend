@@ -3,42 +3,51 @@ from django.db import transaction
 from feedup.models import ArticleStaging, Article
 
 class Command(BaseCommand):
-    help = 'Processes articles from the staging table and moves them to the final Article table.'
+    help = 'Process approved articles from staging to production'
 
     def handle(self, *args, **options):
-        # Find all articles in the staging table that have not been processed yet.
-        staged_articles = ArticleStaging.objects.filter(processed=True)
+        # Get all approved but not processed articles
+        articles_to_process = ArticleStaging.objects.filter(
+            approved=True, 
+            processed=False
+        )
         
-        if not staged_articles.exists():
-            self.stdout.write(self.style.SUCCESS('✅ No new articles to process.'))
-            return
-
-        self.stdout.write(f'Found {staged_articles.count()} articles to process...')
-
-        processed_count = 0
-        with transaction.atomic():
-            for staged_article in staged_articles:
-                try:
-                    # Create a new article in the final table
-                    # This assumes the fields have the same names. Adjust if necessary.
-                    final_article = Article.objects.create(
+        self.stdout.write(f"Found {articles_to_process.count()} articles to process...")
+        
+        success_count = 0
+        
+        # Process each article in its own transaction
+        for staged_article in articles_to_process:
+            try:
+                with transaction.atomic():
+                    # Check if article with this URL already exists
+                    if Article.objects.filter(source_url=staged_article.source_url).exists():
+                        self.stdout.write(self.style.WARNING(
+                            f"Skipping article {staged_article.id}: Article with URL {staged_article.source_url} already exists."
+                        ))
+                        # Mark as processed anyway since we don't need to process it again
+                        staged_article.processed = True
+                        staged_article.save()
+                        continue
+                        
+                    # Create the Article record
+                    Article.objects.create(
                         title=staged_article.title,
                         source_url=staged_article.source_url,
                         source_name=staged_article.source_name,
-                        summary=staged_article.summary, # Or generate a summary here
+                        summary=staged_article.summary,
                         prompts=staged_article.prompts,
                         published_at=staged_article.published_at,
-                        staging_article=staged_article # Link back to the staging entry
+                        staging_article=staged_article
                     )
                     
-                    # Mark the staged article as processed
+                    # Mark as processed
                     staged_article.processed = True
                     staged_article.save()
                     
-                    processed_count += 1
-                    self.stdout.write(f'  -> Processed and created article: "{final_article.title[:50]}..."')
-
-                except Exception as e:
-                    self.stderr.write(self.style.ERROR(f'Error processing article {staged_article.id}: {e}'))
+                    success_count += 1
+                    
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f"Error processing article {staged_article.id}: {str(e)}"))
         
-        self.stdout.write(self.style.SUCCESS(f'🎉 Successfully processed {processed_count} articles.'))
+        self.stdout.write(self.style.SUCCESS(f"🎉 Successfully processed {success_count} articles."))

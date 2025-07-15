@@ -16,53 +16,42 @@ class OTPVerifySerializer(serializers.Serializer):
 
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from rest_framework_simplejwt.exceptions import InvalidToken
+from django.contrib.auth.models import User
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     def validate(self, attrs):
+        # The default validation checks the token's signature and expiration.
         data = super().validate(attrs)
-
+        
+        # Decode the refresh token to access its claims.
         refresh = RefreshToken(attrs['refresh'])
         
-        # Read the claims from the refresh token
+        user_id = refresh.get('user_id')
         email = refresh.get('email')
         user_type = refresh.get('user_type')
 
-        # Inject into new access token
-        access = AccessToken.for_user(self.context['request'].user)
-        access['email'] = email
-        access['user_type'] = user_type
+        # --- THIS IS THE FIX ---
+        # Find the user associated with the token. If they don't exist or are
+        # inactive, the token is invalid.
+        try:
+            user = User.objects.get(id=user_id, is_active=True)
+        except User.DoesNotExist:
+            raise InvalidToken('User not found for the given token.')
 
-        data['access'] = str(access)
+        # Create a new access token for the *correct* user.
+        new_access_token = AccessToken.for_user(user)
+        
+        # Re-inject the custom claims into the new access token.
+        new_access_token['email'] = email
+        new_access_token['user_type'] = user_type
+        
+        data['access'] = str(new_access_token)
+
         return data
-
-# # post_serializer
-# from .models import Post
-
-# class PostSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Post
-#         fields = '__all__'
-
-# # saved_post_serializer
-# from .models import SavedPost
-
-# class SavedPostSerializer(serializers.ModelSerializer):
-#     post = PostSerializer(read_only=True)
-
-#     class Meta:
-#         model = SavedPost
-#         fields = ['id', 'post', 'saved_at']
 
 
 from .models import Post, SavedPost
-
-# class PostSerializer(serializers.ModelSerializer):
-#     course_name = serializers.CharField(source='course.name', read_only=True)
-#     semester_name = serializers.CharField(source='semester.name', read_only=True)
-#     class Meta:
-#         model = Post
-#         fields = '__all__'
-#         read_only_fields = ['faculty', 'created_at']
 
 from rest_framework import serializers
 from .models import Post
@@ -130,5 +119,5 @@ class CourseSerializer(serializers.ModelSerializer):
 class SemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester
-        fields = ['id', 'name', 'course']        
+        fields = ['id', 'name', 'course']
 

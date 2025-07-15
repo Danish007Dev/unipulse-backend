@@ -1,7 +1,7 @@
 # inside summarize_articles.py
 from django.core.management.base import BaseCommand
 from feedup.models import ArticleStaging
-from feedup.utils import summarize_article
+from feedup.utils import summarize_articles
 
 class Command(BaseCommand):
     help = "Use Gemini to summarize approved tech articles"
@@ -10,7 +10,7 @@ class Command(BaseCommand):
         articles = ArticleStaging.objects.filter(approved=True, ai_generated=False)
         count = 0
         for article in articles:
-            success, error = summarize_article(article)
+            success, error = summarize_articles(article)
             if success:
                 count += 1
             else:

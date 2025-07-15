@@ -5,8 +5,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .models import Article, FeedUpUser, Bookmark # ✅ Import Article
-from .serializers import ArticleSerializer, BookmarkSerializer, FeedUpUserRegistrationSerializer, FeedUpUserLoginSerializer
+from .models import Article, FeedUpUser, Bookmark, AiResponseBookmark # ✅ Import Article
+from .serializers import ArticleSerializer, BookmarkSerializer, FeedUpUserRegistrationSerializer, FeedUpUserLoginSerializer, AiResponseBookmarkSerializer # Add AiResponseBookmarkSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .authentication import FeedUpJWTAuthentication
@@ -15,6 +15,10 @@ from datetime import timedelta
 from django.utils import timezone
 from uniapp.authentication import CustomJWTAuthentication
 from uniapp.permissions import IsStudent, IsFaculty, IsAdmin
+from .utils import generate_questions_for_article, get_ai_response
+import logging
+
+app_logger = logging.getLogger('feedup')
 
 class CheckUserView(APIView):
     """Checks if a FeedUpUser exists with the given email."""
@@ -326,3 +330,97 @@ class SetFeedUpPasswordView(APIView):
         user.save()
         
         return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
+
+class AskAiView(APIView):
+    """
+    Handles AI-related queries for articles.
+    - POST without a 'query' generates initial questions.
+    - POST with a 'query' gets a specific answer.
+    """
+    authentication_classes = [FeedUpJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        article_id = request.data.get('article_id')
+        query = request.data.get('query')
+
+        if not article_id:
+            return Response({"error": "article_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            article = Article.objects.get(id=article_id)
+        except Article.DoesNotExist:
+            return Response({"error": "Article not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if query:
+            # Action: Answer a user's query
+            try:
+                answer = get_ai_response(article, query)
+                app_logger.info(f"User {request.user.email} asked '{query}' for article {article_id}")
+                return Response({"answer": answer}, status=status.HTTP_200_OK)
+            except Exception as e:
+                app_logger.error(f"Error getting AI response for article {article_id}: {e}")
+                return Response({"error": "Failed to get AI response"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            # Action: Generate initial questions
+            try:
+                questions = generate_questions_for_article(article)
+                app_logger.info(f"Generated questions for article {article_id} for user {request.user.email}")
+                return Response({"questions": questions}, status=status.HTTP_200_OK)
+            except Exception as e:
+                app_logger.error(f"Error generating questions for article {article_id}: {e}")
+                return Response({"error": "Failed to generate questions"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from rest_framework import generics
+
+class AiResponseBookmarkListView(generics.ListAPIView):
+    """
+    Provides a list of all AI response bookmarks for the authenticated user.
+    """
+    serializer_class = AiResponseBookmarkSerializer
+    authentication_classes = [FeedUpJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return AiResponseBookmark.objects.filter(user=self.request.user)
+
+
+class AiResponseBookmarkToggleView(APIView):
+    """
+    Creates or deletes an AI response bookmark.
+    """
+    authentication_classes = [FeedUpJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        article_id = request.data.get('article_id')
+        question = request.data.get('question')
+        answer = request.data.get('answer')
+
+        if not all([article_id, question, answer]):
+            return Response(
+                {"error": "article_id, question, and answer are required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            article = Article.objects.get(id=article_id)
+        except Article.DoesNotExist:
+            return Response({"error": "Article not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Try to get the bookmark
+        bookmark, created = AiResponseBookmark.objects.get_or_create(
+            user=request.user,
+            original_article=article,
+            question=question,
+            defaults={'answer': answer}
+        )
+
+        if created:
+            # The bookmark was just created
+            serializer = AiResponseBookmarkSerializer(bookmark)
+            return Response({"status": "bookmarked", "data": serializer.data}, status=status.HTTP_201_CREATED)
+        else:
+            # The bookmark already existed, so delete it
+            bookmark.delete()
+            return Response({"status": "bookmark_removed"}, status=status.HTTP_204_NO_CONTENT)
