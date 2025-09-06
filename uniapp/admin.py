@@ -97,18 +97,23 @@ class ResearchMajorAdmin(admin.ModelAdmin):
         """Custom action buttons for each research major"""
         edit_url = reverse('admin:uniapp_researchmajor_change', args=[obj.id])
         delete_url = reverse('admin:uniapp_researchmajor_delete', args=[obj.id])
-        
+
         faculty_count = obj.faculty_members.count()
         delete_disabled = faculty_count > 0
-        
-        delete_button = f'''
-            <a class="button {'disabled' if delete_disabled else ''}" 
-               href="{delete_url if not delete_disabled else '#'}"
-               {'onclick="alert(\'Cannot delete: assigned to faculty\'); return false;"' if delete_disabled else 'onclick="return confirm(\'Delete this major?\');"'}>
-               Delete
-            </a>
-        '''
-        
+
+        if delete_disabled:
+            onclick = "alert('Cannot delete: assigned to faculty'); return false;"
+            href = "#"
+            button_class = "button disabled"
+        else:
+            onclick = "return confirm('Delete this major?');"
+            href = delete_url
+            button_class = "button"
+
+        delete_button = (
+            f'<a class="{button_class}" href="{href}" onclick="{onclick}">Delete</a>'
+        )
+
         return format_html(
             '<a class="button" href="{}">Edit</a> {}',
             edit_url, delete_button
@@ -120,26 +125,22 @@ class ResearchMajorAdmin(admin.ModelAdmin):
         faculty_count = obj.faculty_members.count()
         
         if faculty_count > 0:
-            messages.error(
+            self.message_user(
                 request,
-                f"Cannot delete '{obj.name}' - assigned to {faculty_count} faculty member(s)."
+                f"Cannot delete '{obj.name}' because it is assigned to {faculty_count} faculty member(s). "
+                "Please reassign faculty first.",
+                level=messages.ERROR
             )
+            # Return without deleting - Django will handle the redirect
             return
         
-        obj.delete()
-        messages.success(request, f"Deleted '{obj.name}' successfully.")
-    
-    # Custom fields for the form
-    fieldsets = (
-        ('Basic Information', {
-            'fields': ('name', 'category', 'description')
-        }),
-        ('Advanced Options', {
-            'fields': (),
-            'classes': ('collapse',),
-            'description': 'Additional settings for this research major'
-        }),
-    )
+        # Safe to delete
+        super().delete_model(request, obj)
+        self.message_user(
+            request,
+            f"Successfully deleted research major '{obj.name}'.",
+            level=messages.SUCCESS
+        )
     
     def faculty_count(self, obj):
         """Show how many faculty members have this major"""
@@ -218,28 +219,6 @@ class ResearchMajorAdmin(admin.ModelAdmin):
             readonly_fields.append('category')
             
         return readonly_fields
-    
-    def delete_model(self, request, obj):
-        """Override delete to check for faculty assignments"""
-        faculty_count = obj.faculty_members.count()
-        
-        if faculty_count > 0:
-            self.message_user(
-                request,
-                f"Cannot delete '{obj.name}' because it is assigned to {faculty_count} faculty member(s). "
-                "Please reassign faculty first.",
-                level=messages.ERROR
-            )
-            # Return without deleting - Django will handle the redirect
-            return
-        
-        # Safe to delete
-        super().delete_model(request, obj)
-        self.message_user(
-            request,
-            f"Successfully deleted research major '{obj.name}'.",
-            level=messages.SUCCESS
-        )
     
     def save_model(self, request, obj, form, change):
         """Override save to add custom logic"""
