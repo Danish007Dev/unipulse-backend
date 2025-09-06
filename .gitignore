@@ -17,6 +17,7 @@ env/
 
 # VS Code
 .vscode/
+passwords.txt
 
 # MacOS
 .DS_Store

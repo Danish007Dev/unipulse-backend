@@ -41,6 +41,9 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 SUPABASE_URL = env('SUPABASE_URL')
 SUPABASE_SERVICE_KEY = env('SUPABASE_SERVICE_KEY')
 
+GEMINI_API_KEY = env("GEMINI_API_KEY")
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -57,16 +60,17 @@ INSTALLED_APPS = [
     'django_extensions',
     'rest_framework_simplejwt',
     'nested_admin',
+    'feedup',
+    'rest_framework_simplejwt.token_blacklist',
+    'django_object_actions',  # For custom admin actions
 ]
 
 REST_FRAMEWORK = {
    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "uniapp.authentication.CustomJWTAuthentication",  # <-- your custom one
-        #"rest_framework_simplejwt.authentication.JWTAuthentication",  # Enables JWT
+        "uniapp.authentication.CustomJWTAuthentication",  # my custom one
         
     ),
     "DEFAULT_PERMISSION_CLASSES": (
-        #"rest_framework.permissions.AllowAny", # AllowAny globally,ensuring unauthenticated access for general endpoints like request-otp, verify-otp
         "rest_framework.permissions.IsAuthenticated",  # Default: Auth required for all endpoints
     ),
     
@@ -122,7 +126,7 @@ ROOT_URLCONF = 'uniBackend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -177,7 +181,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -231,5 +235,29 @@ SECURE_SSL_REDIRECT = not DEBUG
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
+
+# Add to your LOGGING configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'feedup_ingestion.log',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'feedup.ingestion': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
 
 

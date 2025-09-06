@@ -26,69 +26,6 @@ from .authentication import CustomJWTAuthentication
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.exceptions import ValidationError, NotFound
 from .utils import get_user_by_type_and_details
-# from supabase import create_client
-# from uniBackend import settings
-
-# SUPABASE_URL = settings.SUPABASE_URL
-# SUPABASE_SERVICE_KEY = settings.SUPABASE_SERVICE_KEY
-# supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-# def extract_supabase_path(url):
-#     """
-#     Given a full Supabase public URL, extract the relative path in the bucket.
-#     Example: 
-#     https://xyz.supabase.co/storage/v1/object/public/media-unipulse/documents/file.pdf 
-#     -> documents/file.pdf
-#     """
-#     parts = url.split('/media-unipulse/')
-#     if len(parts) == 2:
-#         return parts[1]
-#     return None
-
-
-# class RequestOTPView(APIView):
-#     permission_classes = [AllowAny]
-#     def post(self, request):
-#         serializer = OTPRequestSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user_type = serializer.validated_data["user_type"]
-#             email = serializer.validated_data["email"]
-#             enrollment_number = serializer.validated_data.get("enrollment_number")
-#             department = serializer.validated_data.get("department")
-
-#             user = None
-#             if user_type == "student":
-#                 user = Student.objects.filter(email=email, enrollment_number=enrollment_number).first()
-#             elif user_type == "faculty":
-#                 dept_obj = Department.objects.filter(name=department).first()
-#                 if not dept_obj:
-#                     return Response({"error": "Invalid department"}, status=status.HTTP_400_BAD_REQUEST)
-#                 user = Faculty.objects.filter(email=email, department=dept_obj).first()
-#             elif user_type == "admin":
-#                 user = Admin.objects.filter(email=email, department=department).first()
-#             else:
-#                 return Response({"error": "Invalid user type"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             if not user:
-#                 return Response({"error": "User not found or incorrect details"}, status=status.HTTP_404_NOT_FOUND)
-
-#             otp = random.randint(100000, 999999)
-#             OTPVerification.objects.update_or_create(
-#                 email=email,
-#                 defaults={"otp": otp, "created_at": timezone.now()}
-#             )
-
-#             send_mail(
-#                 "Your UniPulse OTP Code",
-#                 f"Your OTP is {otp}. It is valid for 5 minutes.",
-#                 "no-reply@unipulse.com",
-#                 [email],
-#                 fail_silently=False,
-#             )
-
-#             return Response({"message": "OTP sent successfully"}, status=status.HTTP_200_OK)
-
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RequestOTPView(APIView):
@@ -131,41 +68,6 @@ class RequestOTPView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class VerifyOTPView(APIView):
-#     permission_classes = [AllowAny]
-
-#     def post(self, request):
-#         serializer = OTPVerifySerializer(data=request.data)
-#         if serializer.is_valid():
-#             email = serializer.validated_data["email"]
-#             otp = serializer.validated_data["otp"]
-#             user_type = serializer.validated_data["user_type"]
-#             otp_entry = OTPVerification.objects.filter(email=email, otp=str(otp)).first()
-
-#             if not otp_entry or otp_entry.is_expired():
-#                 return Response({"error": "Invalid or expired OTP"}, status=400)
-
-#             otp_entry.delete()
-
-#             user = None
-#             if user_type == "student":
-#                 user = Student.objects.filter(email=email).first()
-#             elif user_type == "faculty":
-#                 user = Faculty.objects.filter(email=email).first()
-#             elif user_type == "admin":
-#                 user = Admin.objects.filter(email=email).first()
-
-#             if not user:
-#                 return Response({"error": "User not found"}, status=404)
-
-#             tokens = generate_custom_tokens(user, user_type)
-#             return Response({
-#                 "message": "OTP verified successfully",
-#                 "access_token": tokens["access"],
-#                 "refresh_token": tokens["refresh"]
-#             }, status=200)
-
-#         return Response(serializer.errors, status=400)
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
@@ -265,50 +167,7 @@ class StudentPostListView(APIView):
         )
 
         return paginator.get_paginated_response(serializer.data)    
-
-# class StudentPostListView(APIView):
-#     authentication_classes = [CustomJWTAuthentication]
-#     permission_classes = [IsAuthenticated, IsStudent]
-
-#     def get(self, request):
-        
-#         student = request.user.profile
-#         posts = Post.objects.filter(
-#             course=student.course,
-#             semester=student.semester
-#         ).order_by('-created_at')
-
-#         # serializer = PostSerializer(posts, many=True)
-#         # return Response(serializer.data)
-#         paginator = StudentPostPagination()
-#         result_page = paginator.paginate_queryset(posts, request)
-#         # Mark saved status
-#         saved_ids = SavedPost.objects.filter(student=student).values_list('post_id', flat=True)
-#         serializer = PostSerializer(result_page, many=True, context={'request': request, 'saved_ids': set(saved_ids)})
-#         return paginator.get_paginated_response(serializer.data)
     
-# class SavePostView(APIView):
-#     authentication_classes = [CustomJWTAuthentication]
-#     permission_classes = [IsAuthenticated, IsStudent]
-
-#     def post(self, request):
-#         student = request.user.profile
-#         post_id = request.data.get('post_id')
-
-#         if not post_id:
-#             return Response({"error": "Post ID is required"}, status=400)
-
-#         try:
-#             post = Post.objects.get(id=post_id)
-#         except Post.DoesNotExist:
-#             return Response({"error": "Post not found"}, status=404)
-
-#         saved, created = SavedPost.objects.get_or_create(student=student, post=post)
-
-#         if not created:
-#             return Response({"message": "Already saved"}, status=200)
-
-#         return Response({"message": "Post saved successfully"})
 
 class ToggleSavePostView(APIView):
     authentication_classes = [CustomJWTAuthentication]
@@ -333,20 +192,6 @@ class ToggleSavePostView(APIView):
             return Response({"message": "Post unsaved"}, status=200)
 
         return Response({"message": "Post saved"})
-
-
-# class SavedPostsListView(APIView):
-#     authentication_classes = [CustomJWTAuthentication]
-#     permission_classes = [IsAuthenticated, IsStudent]
-
-#     def get(self, request):
-#         student = request.user.profile
-#         saved_posts = SavedPost.objects.filter(student=student).order_by('-saved_at')
-#         serializer = SavedPostSerializer(saved_posts, many=True, context={'request': request})
-#         return Response(serializer.data)
-
-
-from rest_framework.pagination import PageNumberPagination
 
 
         
@@ -390,46 +235,10 @@ class FacultyPostCreateView(APIView):
 
         serializer = PostSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            # data = serializer.save(faculty=faculty, department=faculty.department)
-            #  # Save with faculty from request
-            # # post = serializer.save(faculty=request.user.faculty)
-            
-            # # Handle document upload [test if django file upload works with commenting this section and then delete]
-            # if 'document_upload' in request.FILES:
-            #     data.document = request.FILES['document_upload']
-            
-            # # Handle image upload
-            # if 'image_upload' in request.FILES:
-            #     data.image = request.FILES['image_upload']
-            
-            # # Save the post with files
-            # # data.save()
-            # return Response(serializer.data, status=201)
             post = serializer.save(faculty=faculty, department=faculty.department)
             return Response(PostSerializer(post, context={'request': request}).data, status=201)
         return Response(serializer.errors, status=400)
 
-# class FacultyPostDeleteView(APIView):
-#     authentication_classes = [CustomJWTAuthentication]
-#     permission_classes = [IsAuthenticated, IsFaculty]
-
-#     def delete(self, request, post_id):
-#         faculty = request.user.profile
-#         try:
-#             post = Post.objects.get(id=post_id, faculty=faculty)
-#              # Extract Supabase paths and delete files
-#             doc_path = extract_supabase_path(post.document) if post.document else None
-#             img_path = extract_supabase_path(post.image) if post.image else None
-
-#             if doc_path:
-#                 supabase.storage.from_("media-unipulse").remove([doc_path])
-#             if img_path:
-#                 supabase.storage.from_("media-unipulse").remove([img_path])
-                
-#             post.delete()
-#             return Response({"detail": "Post deleted."}, status=200)
-#         except Post.DoesNotExist:
-#             return Response({"detail": "Post not found or unauthorized."}, status=404)
 
 class FacultyPostDeleteView(APIView):
     authentication_classes = [CustomJWTAuthentication]
@@ -474,3 +283,17 @@ class DepartmentListView(APIView):
         serializer = DepartmentSerializer(departments, many=True)
         return Response(serializer.data)    
 # if returning hundreds of entries,add pagination later — but for now, this gives a clean list.    
+
+
+class FacultyMajorsAPIView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsFaculty]
+
+    def get(self, request):
+        """Get research majors for the authenticated faculty member."""
+        try:
+            faculty = request.user.profile  # This uses your custom authentication
+            majors = [major.category for major in faculty.majors.all()]
+            return Response({'majors': majors})
+        except Exception as e:
+            return Response({'majors': [], 'error': str(e)}, status=500)
