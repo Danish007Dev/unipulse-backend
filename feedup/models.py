@@ -127,7 +127,7 @@ class AiResponseBookmark(models.Model):
         ordering = ['-created_at']
         # Ensures a user cannot bookmark the same question for the same article more than once.
         constraints = [
-            models.UniqueConstraint(fields=['user', 'original_article_id', 'question'], name='unique_ai_bookmark_per_user')
+            models.UniqueConstraint(fields=['user', 'original_article', 'question'], name='unique_ai_bookmark_per_user')
         ]
 
     def __str__(self):
