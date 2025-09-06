@@ -17,7 +17,7 @@ Including another URLconf
 from django.shortcuts import redirect
 from django.contrib import admin
 from django.urls import path , include
-from uniapp.views import VerifyOTPView, RequestOTPView, CustomTokenRefreshView, StudentPostListView, ToggleSavePostView,FacultyPostListView, FacultyPostCreateView, FacultyCoursesAPIView, SemestersByCourseAPIView, FacultyPostDeleteView, DepartmentListView
+from uniapp.views import VerifyOTPView, RequestOTPView, CustomTokenRefreshView, StudentPostListView, ToggleSavePostView,FacultyPostListView, FacultyPostCreateView, FacultyCoursesAPIView, SemestersByCourseAPIView, FacultyPostDeleteView, DepartmentListView, FacultyMajorsAPIView
 from rest_framework_simplejwt.views import TokenBlacklistView
 
 
@@ -50,7 +50,7 @@ urlpatterns = [
     path('views/faculty/courses/', FacultyCoursesAPIView.as_view(), name='faculty-courses'),
     path('views/course/<int:course_id>/semesters/', SemestersByCourseAPIView.as_view(), name='semesters-by-course'),
     path('views/faculty/posts/<int:post_id>/', FacultyPostDeleteView.as_view(), name='delete-post'),
-
+    path('views/faculty/majors/', FacultyMajorsAPIView.as_view(), name='faculty-majors'),
     # Department
     path('views/departments/', DepartmentListView.as_view(), name='department-list'),
 ]

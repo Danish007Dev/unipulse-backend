@@ -1,12 +1,21 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView 
 
 from feedup.views import (
     ArticleListView, GoogleAuthView, BookmarkView, 
     FeedUpRegisterView, FeedUpLoginView,
     FeedUpSendOtpView, FeedUpVerifyOtpView,
-    SyncUniPulseUserView, CheckUserView, SetFeedUpPasswordView, AskAiView, AiResponseBookmarkListView, AiResponseBookmarkToggleView
+    SyncUniPulseUserView, CheckUserView, SetFeedUpPasswordView, AskAiView, 
+    AiResponseBookmarkListView, AiResponseBookmarkToggleView,
+    # Add our new viewsets
+    ConferenceViewSet, ResearchUpdateViewSet
 )
+
+# Create a router for our viewsets
+router = DefaultRouter()
+router.register(r'conferences', ConferenceViewSet, basename='conferences')
+router.register(r'research', ResearchUpdateViewSet, basename='research')
 
 urlpatterns = [
      path("articles/", ArticleListView.as_view(), name="article-list"),
@@ -35,4 +44,7 @@ urlpatterns = [
     # Add the new URL patterns for AI bookmarks
     path("ai-bookmarks/", AiResponseBookmarkListView.as_view(), name="ai-bookmark-list"),
     path("ai-bookmarks/toggle/", AiResponseBookmarkToggleView.as_view(), name="ai-bookmark-toggle"),
+    
+    # Include the router URLs
+    path('', include(router.urls)),
 ]

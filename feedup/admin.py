@@ -3,7 +3,7 @@ from django.utils.safestring import mark_safe
 from django.urls import path, reverse
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
-from .models import ArticleStaging, FeedUpUser, Article, Bookmark
+from .models import ArticleStaging, FeedUpUser, Article, Bookmark, Conference, ResearchUpdate
 from .utils import summarize_articles, ingest_articles
 from django_object_actions import DjangoObjectActions, action
 from django import forms
@@ -262,8 +262,8 @@ class ArticlesAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
     
-    def has_delete_permission(self, request, obj=None):
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     return False
     
 @admin.register(Bookmark)
 class BookmarkAdmin(admin.ModelAdmin):
@@ -272,3 +272,91 @@ class BookmarkAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+@admin.register(Conference)
+class ConferenceAdmin(admin.ModelAdmin):
+    list_display = ('title', 'start_date', 'end_date', 'location', 'source')
+    list_filter = ('source', 'start_date')
+    search_fields = ('title', 'description', 'location')
+    date_hierarchy = 'start_date'
+    readonly_fields = ('unique_hash', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Conference Details', {
+            'fields': ('title', 'description', 'start_date', 'end_date', 'location', 'website_url', 'topics')
+        }),
+        ('Deadlines', {
+            'fields': ('deadline_submission', 'deadline_notification')
+        }),
+        ('Source Information', {
+            'fields': ('source', 'source_id')
+        }),
+        ('System Fields', {
+            'fields': ('unique_hash', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    change_list_template = 'admin/feedup/conference/change_list.html'
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('fetch-cs-data/', self.admin_site.admin_view(self.fetch_cs_data), name='fetch_cs_data'),
+            path('fetch-conferences-only/', self.admin_site.admin_view(self.fetch_conferences_only), name='fetch_conferences_only'),
+        ]
+        return custom_urls + urls
+    
+    def fetch_cs_data(self, request):
+        from django.core.management import call_command
+        call_command('fetch_cs_data')
+        self.message_user(request, "Successfully fetched conference and research data.")
+        return HttpResponseRedirect(reverse('admin:feedup_conference_changelist'))
+    
+    def fetch_conferences_only(self, request):
+        from django.core.management import call_command
+        call_command('fetch_cs_data', conferences_only=True)
+        self.message_user(request, "Successfully fetched conference data.")
+        return HttpResponseRedirect(reverse('admin:feedup_conference_changelist'))
+
+
+@admin.register(ResearchUpdate)
+class ResearchUpdateAdmin(admin.ModelAdmin):
+    list_display = ('title', 'publication_date', 'institution', 'category', 'source')
+    list_filter = ('source', 'publication_date', 'category', 'institution')
+    search_fields = ('title', 'summary', 'authors')
+    date_hierarchy = 'publication_date'
+    readonly_fields = ('unique_hash', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Research Details', {
+            'fields': ('title', 'summary', 'publication_date', 'url', 'authors', 'institution', 'category')
+        }),
+        ('Source Information', {
+            'fields': ('source', 'source_id')
+        }),
+        ('System Fields', {
+            'fields': ('unique_hash', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    change_list_template = 'admin/feedup/researchupdate/change_list.html'
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('fetch-cs-data/', self.admin_site.admin_view(self.fetch_cs_data), name='fetch_cs_data'),
+            path('fetch-research-only/', self.admin_site.admin_view(self.fetch_research_only), name='fetch_research_only'),
+        ]
+        return custom_urls + urls
+    
+    def fetch_cs_data(self, request):
+        from django.core.management import call_command
+        call_command('fetch_cs_data')
+        self.message_user(request, "Successfully fetched conference and research data.")
+        return HttpResponseRedirect(reverse('admin:feedup_researchupdate_changelist'))
+    
+    def fetch_research_only(self, request):
+        from django.core.management import call_command
+        call_command('fetch_cs_data', research_only=True)
+        self.message_user(request, "Successfully fetched research data.")
+        return HttpResponseRedirect(reverse('admin:feedup_researchupdate_changelist'))

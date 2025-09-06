@@ -1,5 +1,7 @@
-from .models import ArticleStaging, FeedUpUser, Bookmark, Article , AiResponseBookmark
+from .models import ArticleStaging, FeedUpUser, Bookmark, Article , AiResponseBookmark, Conference, ResearchUpdate
 from rest_framework import serializers
+from django.utils import timezone
+from datetime import date
 
 class YourFeedSerializer(serializers.ModelSerializer):
     class Meta:
@@ -79,4 +81,69 @@ class AiResponseBookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AiResponseBookmark
-        fields = ['id', 'question', 'answer', 'created_at', 'original_article']    
+        fields = ['id', 'question', 'answer', 'created_at', 'original_article']
+
+
+class ConferenceSerializer(serializers.ModelSerializer):
+    """Serializer for the Conference model."""
+    days_until = serializers.SerializerMethodField()
+    status_text = serializers.SerializerMethodField()
+    deadline_text = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Conference
+        fields = [
+            'id', 'title', 'description', 'start_date', 'end_date', 'location', 
+            'website_url', 'deadline_submission', 'deadline_notification', 
+            'topics', 'days_until', 'status_text', 'deadline_text'
+        ]
+    
+    def get_days_until(self, obj):
+        today = date.today()
+        return (obj.start_date - today).days
+    
+    def get_status_text(self, obj):
+        days_until = self.get_days_until(obj)
+        if days_until > 0:
+            return f'In {days_until} days'
+        elif days_until == 0:
+            return 'Happening now'
+        else:
+            return 'Ended'
+    
+    def get_deadline_text(self, obj):
+        if not obj.deadline_submission:
+            return 'No deadline info'
+        
+        today = date.today()
+        if obj.deadline_submission < today:
+            return 'Deadline passed'
+        else:
+            days_left = (obj.deadline_submission - today).days
+            return f'Submit in {days_left} days'
+
+class ResearchUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for the ResearchUpdate model."""
+    days_since_publication = serializers.SerializerMethodField()
+    recency_text = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ResearchUpdate
+        fields = [
+            'id', 'title', 'summary', 'publication_date', 'url', 'source', 
+            'authors', 'institution', 'category', 'days_since_publication', 
+            'recency_text'
+        ]
+    
+    def get_days_since_publication(self, obj):
+        today = date.today()
+        return (today - obj.publication_date).days
+    
+    def get_recency_text(self, obj):
+        days_since = self.get_days_since_publication(obj)
+        if days_since == 0:
+            return 'Published today'
+        elif days_since == 1:
+            return 'Published yesterday'
+        else:
+            return f'Published {days_since} days ago'

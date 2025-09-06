@@ -283,3 +283,17 @@ class DepartmentListView(APIView):
         serializer = DepartmentSerializer(departments, many=True)
         return Response(serializer.data)    
 # if returning hundreds of entries,add pagination later — but for now, this gives a clean list.    
+
+
+class FacultyMajorsAPIView(APIView):
+    authentication_classes = [CustomJWTAuthentication]
+    permission_classes = [IsAuthenticated, IsFaculty]
+
+    def get(self, request):
+        """Get research majors for the authenticated faculty member."""
+        try:
+            faculty = request.user.profile  # This uses your custom authentication
+            majors = [major.category for major in faculty.majors.all()]
+            return Response({'majors': majors})
+        except Exception as e:
+            return Response({'majors': [], 'error': str(e)}, status=500)

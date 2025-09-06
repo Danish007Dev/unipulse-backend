@@ -5,8 +5,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
-from .models import Article, FeedUpUser, Bookmark, AiResponseBookmark # ✅ Import Article
-from .serializers import ArticleSerializer, BookmarkSerializer, FeedUpUserRegistrationSerializer, FeedUpUserLoginSerializer, AiResponseBookmarkSerializer # Add AiResponseBookmarkSerializer
+from .models import Article, FeedUpUser, Bookmark, AiResponseBookmark, Conference, ResearchUpdate # ✅ Import Article
+from .serializers import ArticleSerializer, BookmarkSerializer, FeedUpUserRegistrationSerializer, FeedUpUserLoginSerializer, AiResponseBookmarkSerializer, ConferenceSerializer, ResearchUpdateSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .authentication import FeedUpJWTAuthentication
@@ -378,7 +378,7 @@ class AiResponseBookmarkListView(generics.ListAPIView):
     Provides a list of all AI response bookmarks for the authenticated user.
     """
     serializer_class = AiResponseBookmarkSerializer
-    authentication_classes = [FeedUpJWTAuthentication]
+    authentication_classes = [FeedUpJWTAuthentication, CustomJWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -424,3 +424,105 @@ class AiResponseBookmarkToggleView(APIView):
             # The bookmark already existed, so delete it
             bookmark.delete()
             return Response({"status": "bookmark_removed"}, status=status.HTTP_204_NO_CONTENT)
+
+from rest_framework.pagination import PageNumberPagination
+from .models import Conference, ResearchUpdate
+from .serializers import ConferenceSerializer, ResearchUpdateSerializer
+from django.utils import timezone
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import viewsets, mixins
+from rest_framework.permissions import IsAuthenticated
+from django.db.models import Q
+from datetime import date
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Conference.objects.all()  # Add this line
+    serializer_class = ConferenceSerializer
+    authentication_classes = [FeedUpJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = Conference.objects.all()
+        
+        # Get query parameters
+        show_past = self.request.query_params.get('show_past', 'false').lower() == 'true'
+        search = self.request.query_params.get('search', '').strip()
+        location = self.request.query_params.get('location', '').strip()
+        topic = self.request.query_params.get('topic', '').strip()
+        
+        # Filter by past/future
+        today = date.today()
+        if not show_past:
+            queryset = queryset.filter(start_date__gte=today)
+        
+        # Search filter (title, description, location)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(description__icontains=search) |
+                Q(location__icontains=search) |
+                Q(topics__icontains=search)
+            )
+        
+        # Location filter
+        if location:
+            queryset = queryset.filter(location__icontains=location)
+        
+        # Topic filter
+        if topic:
+            queryset = queryset.filter(topics__icontains=topic)
+        
+        # Order by start date
+        return queryset.order_by('start_date')
+
+class ResearchUpdateViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ResearchUpdate.objects.all()  # Add this line
+    serializer_class = ResearchUpdateSerializer
+    authentication_classes = [FeedUpJWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = ResearchUpdate.objects.all()
+        
+        # Get query parameters
+        search = self.request.query_params.get('search', '').strip()
+        category = self.request.query_params.get('category', '').strip()
+        institution = self.request.query_params.get('institution', '').strip()
+        recent_days = self.request.query_params.get('recent_days')
+        
+        # Search filter (title, summary, authors)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(summary__icontains=search) |
+                Q(authors__icontains=search)
+            )
+        
+        # Category filter
+        if category:
+            queryset = queryset.filter(category__icontains=category)
+        
+        # Institution filter
+        if institution:
+            queryset = queryset.filter(institution__icontains=institution)
+        
+        # Recent filter
+        if recent_days:
+            try:
+                days = int(recent_days)
+                cutoff_date = timezone.now().date() - timezone.timedelta(days=days)
+                queryset = queryset.filter(publication_date__gte=cutoff_date)
+            except ValueError:
+                pass
+        
+        # Order by publication date (newest first)
+        return queryset.order_by('-publication_date')

@@ -6,6 +6,7 @@ import secrets
 import string
 import os
 from django.conf import settings
+import hashlib
 
 class FeedUpUser(models.Model):
     email = models.EmailField(unique=True)
@@ -132,4 +133,86 @@ class AiResponseBookmark(models.Model):
 
     def __str__(self):
         return f"Bookmark by {self.user.email} on article '{self.original_article.title}'"
+    
+
+class Conference(models.Model):
+    """Model to store computer science conference information."""
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    location = models.CharField(max_length=255)
+    website_url = models.URLField()
+    
+    # Store the original identifier from the source
+    source = models.CharField(max_length=100)  # e.g., 'wikicfp', 'conferenceorg', etc.
+    source_id = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Fields for tracking
+    deadline_submission = models.DateField(blank=True, null=True)
+    deadline_notification = models.DateField(blank=True, null=True)
+    topics = models.TextField(blank=True, null=True)  # Comma-separated list of topics
+    
+    # For deduplication and tracking
+    unique_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['start_date']
+        indexes = [
+            models.Index(fields=['start_date']),
+            models.Index(fields=['source', 'source_id']),
+            models.Index(fields=['unique_hash']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} ({self.start_date} to {self.end_date})"
+    
+    def save(self, *args, **kwargs):
+        # Create a unique hash for deduplication
+        if not self.unique_hash:
+            identifier = f"{self.title}|{self.start_date}|{self.location}".lower()
+            self.unique_hash = hashlib.sha256(identifier.encode()).hexdigest()
+        super().save(*args, **kwargs)
+
+
+class ResearchUpdate(models.Model):
+    """Model to store recent research developments in computer science."""
+    title = models.CharField(max_length=255)
+    summary = models.TextField()
+    publication_date = models.DateField()
+    url = models.URLField()
+    
+    # Source information
+    source = models.CharField(max_length=100)  # e.g., 'arxiv', 'mit', 'stanford', etc.
+    source_id = models.CharField(max_length=255, blank=True, null=True)
+    
+    # Additional metadata
+    authors = models.TextField(blank=True, null=True)  # Comma-separated list of authors
+    institution = models.CharField(max_length=255, blank=True, null=True)
+    category = models.CharField(max_length=100, blank=True, null=True)  # e.g., 'AI', 'ML', 'Cybersecurity'
+    search_category= models.CharField(max_length=100, default='Computer Science')  # Default category
+    # For deduplication and tracking
+    unique_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-publication_date']
+        indexes = [
+            models.Index(fields=['-publication_date']),
+            models.Index(fields=['source', 'source_id']),
+            models.Index(fields=['unique_hash']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} ({self.publication_date})"
+    
+    def save(self, *args, **kwargs):
+        # Create a unique hash for deduplication
+        if not self.unique_hash:
+            identifier = f"{self.title}|{self.source}|{self.publication_date}".lower()
+            self.unique_hash = hashlib.sha256(identifier.encode()).hexdigest()
+        super().save(*args, **kwargs)    
 
